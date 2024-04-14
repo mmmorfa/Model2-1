@@ -20,14 +20,12 @@ class SliceManagementEnv1(gym.Env):
 
         self.current_episode = 1
 
-        self.select_db = randint(1,50)
-
         # RAN Global Parameters -------------------------------------------------------------------------------------------------------------------------------------------------------------
         self.numerology = 1                       # 0,1,2,3,...
         self.scs = 2**(self.numerology) * 15_000   # Hz
         self.slot_per_subframe = 2**(self.numerology)
         
-        self.channel_BW = 7_000_000              # Hz (100MHz for <6GHz band, and 400MHZ for mmWave)
+        self.channel_BW = 10_000_000              # Hz (100MHz for <6GHz band, and 400MHZ for mmWave)
         self.guard_BW = 845_000                   # Hz (for symmetric guard band)
 
         self.PRB_BW = self.scs * 12               # Hz - Bandwidth for one PRB (one OFDM symbol, 12 subcarriers)
@@ -90,16 +88,12 @@ class SliceManagementEnv1(gym.Env):
 
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
-
-        self.select_db = randint(1,50)
-        #print(self.select_db)
-        #self.select_db = 41
         
         #self.current_time_step = 1
 
         self.reward = 0
         
-        #self.simulate_noise()
+        self.simulate_noise()
         self.read_parameter_db('processed_requests', 0)
 
         self.reset_resources()
@@ -109,8 +103,6 @@ class SliceManagementEnv1(gym.Env):
         self.config_flag = 0
         self.resources_flag = 1
 
-        self.maintain_request = 0
-
         self.check_resources()
 
         self.observation = np.array([self.config_flag] + [self.resources_flag], dtype=np.float32)
@@ -118,7 +110,7 @@ class SliceManagementEnv1(gym.Env):
         self.info = {}
         self.first = True
         
-        #print("\nReset: ", self.observation)
+        print("\nReset: ", self.observation)
 
         self.current_episode += 1
         
@@ -130,13 +122,9 @@ class SliceManagementEnv1(gym.Env):
         terminated = False
         
         reward_value = 1
-    
+        
         # Apply the selected action (0: Do Nothing, 1: Allocate Slice 1, 2: Allocate Slice 2, 3: Allocate Slice 3)
         terminated = self.evaluate_action(action, reward_value, terminated) 
-
-        self.simulate_noise()
-        self.read_parameter_db('processed_requests', 0)
-        self.read_parameter_db('PRB_map', 0)
 
         self.check_resources()
     
@@ -149,7 +137,7 @@ class SliceManagementEnv1(gym.Env):
         
         #self.current_time_step += 1  # Increment the time step
         
-        #print("Action: ", action, "\nObservation: ", self.observation, "\nReward: ", self.reward)
+        print("Action: ", action, "\nObservation: ", self.observation, "\nReward: ", self.reward)
 
         truncated = False
         
@@ -158,10 +146,7 @@ class SliceManagementEnv1(gym.Env):
     #------------------------Other Functions--------------------------------------------------------------------------------------
     def check_maintain(self):
         # Function to check whether a configuration action is needed or not
-        self.read_parameter_db('processed_requests', 0)
-        self.read_parameter_db('PRB_map', 0)
-
-        for i in self.processed_requests[:-1]:
+        for i in self.processed_requests:
             indices = np.where(self.PRB_map == i['UE_ID'])
             allocated_symbols = len(indices[0])
 
@@ -178,7 +163,7 @@ class SliceManagementEnv1(gym.Env):
         self.check_maintain()
 
         if self.maintain_request != 0:
-            request = next((d for d in self.processed_requests[:-1] if d.get('UE_ID') == self.maintain_request), None)  # Obtain the request that needs to be guaranteed
+            request = next((d for d in self.processed_requests if d.get('UE_ID') == self.maintain_request), None)  # Obtain the request that needs to be guaranteed
 
             #Check RAN Resources ----------------------------------------------------------------------------------------------------------------------------
             self.check_RAN(request)
@@ -278,11 +263,9 @@ class SliceManagementEnv1(gym.Env):
         if action == 1:
             self.check_resources()
             if self.resources_flag == 1 and self.config_flag == 1:
-                for d in self.processed_requests[:-1]:
+                for d in self.processed_requests:
                     if d.get('UE_ID') == self.maintain_request:
                         self.allocate_ran(d)
-                        break
-                self.update_db('PRB_map', 0)
                 self.update_db('processed_requests', 0)
                 self.reward += reward_value   
             else: 
@@ -311,8 +294,8 @@ class SliceManagementEnv1(gym.Env):
         indices = np.where(self.PRB_map == 0)
         available_symbols = len(indices[0])
 
-        indices_a = np.where(self.PRB_map == request['UE_ID'])
-        allocated_symbols = len(indices_a[0])
+        indices = np.where(self.PRB_map == request['UE_ID'])
+        allocated_symbols = len(indices[0])
 
         W_total = self.PRB_BW * self.sprectral_efficiency * (available_symbols + allocated_symbols)
 
@@ -332,8 +315,7 @@ class SliceManagementEnv1(gym.Env):
 
     def read_parameter_db(self, parameter, number):
         # Connect to the SQLite database
-        conn = sqlite3.connect('data/Global_Parameters{}.db'.format(str(self.select_db)))
-        #conn = sqlite3.connect('data/Global_Parameters30.db')
+        conn = sqlite3.connect('/data/Global_Parameters{}.db'.format(str(self.current_episode)))  #data/Global_Parameters1.db
         cursor = conn.cursor()
 
         if parameter == 'processed_requests':
@@ -377,14 +359,12 @@ class SliceManagementEnv1(gym.Env):
 
     def update_db(self, parameter, number):
         # Connect to the SQLite database
-        conn = sqlite3.connect('data/Global_Parameters{}.db'.format(str(self.select_db)))
-        #conn = sqlite3.connect('data/Global_Parameters1.db')
+        conn = sqlite3.connect('/data/Global_Parameters{}.db'.format(str(self.current_episode)))
         cursor = conn.cursor()
 
         if parameter == 'processed_requests':
             # Serialize data
             serialized_parameter = json.dumps(self.processed_requests)
-            #print(serialized_parameter)
 
             cursor.execute('''UPDATE Parameters SET processed_requests = ? WHERE rowid = 1''', (serialized_parameter,))
 
@@ -424,10 +404,12 @@ class SliceManagementEnv1(gym.Env):
     def simulate_noise(self):
         self.read_parameter_db('processed_requests', 0)
 
-        index_request = randint(0, (len(self.processed_requests)-2))
-        self.processed_requests[index_request]['UE_SiNR'] = randint(4, 20)
+        index_request = randint(0, (self.processed_requests-1))
+        self.processed_requests[index_request]['UE_SiNR'] = randint(1, 20)
 
         self.update_db('processed_requests', 0)
+
+
 
     def render(self):
         if self.render_mode == "rgb_array":
@@ -438,5 +420,5 @@ class SliceManagementEnv1(gym.Env):
             pygame.display.quit()
             pygame.quit()
             
-#a = SliceManagementEnv1()
-#check_env(a)
+a = SliceManagementEnv1()
+check_env(a)

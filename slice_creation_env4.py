@@ -30,7 +30,7 @@ ARRIVAL_RATE = {0: 3, 1: 2, 2: 3, 3: 4, 4: 2, 5: 3, 6: 3, 7: 2, 8: 3, 9: 4, 10: 
 # VNF life cycle from VNF types dictionary
 LIFE_CYCLE_RATE = {0: 10, 1: 8, 2: 5, 3: 3, 4: 9, 5: 10, 6: 10, 7: 8, 8: 5, 9: 3, 10: 9, 11: 10}
 # Num of vnf requests
-NUM_VNF_REQUESTS = 10000
+NUM_VNF_REQUESTS = 100
 
 # ****************************** VNF Generator FUNCTIONS ******************************
 
@@ -331,77 +331,103 @@ class SliceCreationEnv4(gym.Env):
         
         # MEC resources part---------------------------------------------------------------
         if slice_id == 1:
+            self.read_parameter_db('resources', 1)
             self.resources_1['MEC_CPU'] -= request['SLICE_MEC_CPU_REQUEST']
             self.resources_1['MEC_RAM'] -= request['SLICE_MEC_RAM_REQUEST']
             self.resources_1['MEC_STORAGE'] -= request['SLICE_MEC_STORAGE_REQUEST']
             self.resources_1['MEC_BW'] -= request['SLICE_MEC_BW_REQUEST']
+            self.update_db('resources', 1)
         elif slice_id == 2:
+            self.read_parameter_db('resources', 2)
             self.resources_2['MEC_CPU'] -= request['SLICE_MEC_CPU_REQUEST']
             self.resources_2['MEC_RAM'] -= request['SLICE_MEC_RAM_REQUEST']
             self.resources_2['MEC_STORAGE'] -= request['SLICE_MEC_STORAGE_REQUEST']
             self.resources_2['MEC_BW'] -= request['SLICE_MEC_BW_REQUEST']
+            self.update_db('resources', 2)
         elif slice_id == 3:
+            self.read_parameter_db('resources', 3)
             self.resources_3['MEC_CPU'] -= request['SLICE_MEC_CPU_REQUEST']
             self.resources_3['MEC_RAM'] -= request['SLICE_MEC_RAM_REQUEST']
             self.resources_3['MEC_STORAGE'] -= request['SLICE_MEC_STORAGE_REQUEST']
             self.resources_3['MEC_BW'] -= request['SLICE_MEC_BW_REQUEST']
+            self.update_db('resources', 3)
         elif slice_id == 4:
+            self.read_parameter_db('resources', 4)
             self.resources_4['MEC_CPU'] -= request['SLICE_MEC_CPU_REQUEST']
             self.resources_4['MEC_RAM'] -= request['SLICE_MEC_RAM_REQUEST']
             self.resources_4['MEC_STORAGE'] -= request['SLICE_MEC_STORAGE_REQUEST']
             self.resources_4['MEC_BW'] -= request['SLICE_MEC_BW_REQUEST']
+            self.update_db('resources', 4)
         elif slice_id == 5:
+            self.read_parameter_db('resources', 5)
             self.resources_5['MEC_CPU'] -= request['SLICE_MEC_CPU_REQUEST']
             self.resources_5['MEC_RAM'] -= request['SLICE_MEC_RAM_REQUEST']
             self.resources_5['MEC_STORAGE'] -= request['SLICE_MEC_STORAGE_REQUEST']
             self.resources_5['MEC_BW'] -= request['SLICE_MEC_BW_REQUEST']
+            self.update_db('resources', 5)
         elif slice_id == 6:
+            self.read_parameter_db('resources', 6)
             self.resources_6['MEC_CPU'] -= request['SLICE_MEC_CPU_REQUEST']
             self.resources_6['MEC_RAM'] -= request['SLICE_MEC_RAM_REQUEST']
             self.resources_6['MEC_STORAGE'] -= request['SLICE_MEC_STORAGE_REQUEST']
             self.resources_6['MEC_BW'] -= request['SLICE_MEC_BW_REQUEST']
+            self.update_db('resources', 6)
     
     def deallocate_slice(self, request, slice_id):
         # Function to deallocate resources of killed requests
 
         # RAN Resources Part-----------------------------------------------------------
+        self.read_parameter_db('PRB_map', 0)
         indices = np.where(self.PRB_map == request['UE_ID'])
 
         for i in range(len(indices[0])):
             #print(f"({indices[0][i]}, {indices[1][i]})")
             self.PRB_map[indices[0][i], indices[1][i]] = 0
+        self.update_db('PRB_map', 0)
 
         # MEC Resources Part------------------------------------------------------------
         if slice_id == 1:
+            self.read_parameter_db('resources', 1)
             self.resources_1['MEC_CPU'] += request['SLICE_MEC_CPU_REQUEST']
             self.resources_1['MEC_RAM'] += request['SLICE_MEC_RAM_REQUEST']
             self.resources_1['MEC_STORAGE'] += request['SLICE_MEC_STORAGE_REQUEST']
             self.resources_1['MEC_BW'] += request['SLICE_MEC_BW_REQUEST']
+            self.update_db('resources', 1)
         elif slice_id == 2:
+            self.read_parameter_db('resources', 2)
             self.resources_2['MEC_CPU'] += request['SLICE_MEC_CPU_REQUEST']
             self.resources_2['MEC_RAM'] += request['SLICE_MEC_RAM_REQUEST']
             self.resources_2['MEC_STORAGE'] += request['SLICE_MEC_STORAGE_REQUEST']
             self.resources_2['MEC_BW'] += request['SLICE_MEC_BW_REQUEST']
+            self.update_db('resources', 2)
         elif slice_id == 3:
+            self.read_parameter_db('resources', 3)
             self.resources_3['MEC_CPU'] += request['SLICE_MEC_CPU_REQUEST']
             self.resources_3['MEC_RAM'] += request['SLICE_MEC_RAM_REQUEST']
             self.resources_3['MEC_STORAGE'] += request['SLICE_MEC_STORAGE_REQUEST']
             self.resources_3['MEC_BW'] += request['SLICE_MEC_BW_REQUEST']
+            self.update_db('resources', 3)
         elif slice_id == 4:
+            self.read_parameter_db('resources', 4)
             self.resources_4['MEC_CPU'] += request['SLICE_MEC_CPU_REQUEST']
             self.resources_4['MEC_RAM'] += request['SLICE_MEC_RAM_REQUEST']
             self.resources_4['MEC_STORAGE'] += request['SLICE_MEC_STORAGE_REQUEST']
             self.resources_4['MEC_BW'] += request['SLICE_MEC_BW_REQUEST']
+            self.update_db('resources', 4)
         elif slice_id == 5:
+            self.read_parameter_db('resources', 5)
             self.resources_5['MEC_CPU'] += request['SLICE_MEC_CPU_REQUEST']
             self.resources_5['MEC_RAM'] += request['SLICE_MEC_RAM_REQUEST']
             self.resources_5['MEC_STORAGE'] += request['SLICE_MEC_STORAGE_REQUEST']
             self.resources_5['MEC_BW'] += request['SLICE_MEC_BW_REQUEST']
+            self.update_db('resources', 5)
         elif slice_id == 6:
+            self.read_parameter_db('resources', 6)
             self.resources_6['MEC_CPU'] += request['SLICE_MEC_CPU_REQUEST']
             self.resources_6['MEC_RAM'] += request['SLICE_MEC_RAM_REQUEST']
             self.resources_6['MEC_STORAGE'] += request['SLICE_MEC_STORAGE_REQUEST']
             self.resources_6['MEC_BW'] += request['SLICE_MEC_BW_REQUEST']
+            self.update_db('resources', 6)
         
     def create_slice (self, request):
         # Function to create the slice for a specific request
@@ -643,7 +669,7 @@ class SliceCreationEnv4(gym.Env):
 
     def update_db(self, parameter, number):
         # Connect to the SQLite database
-        conn = sqlite3.connect('shared.db')
+        conn = sqlite3.connect('Global_Parameters.db')
         cursor = conn.cursor()
 
         if parameter == 'processed_requests':
@@ -687,7 +713,7 @@ class SliceCreationEnv4(gym.Env):
 
     def read_parameter_db(self, parameter, number):
         # Connect to the SQLite database
-        conn = sqlite3.connect('shared.db')
+        conn = sqlite3.connect('Global_Parameters.db')
         cursor = conn.cursor()
 
         if parameter == 'processed_requests':
@@ -702,7 +728,7 @@ class SliceCreationEnv4(gym.Env):
             # Query the database to retrieve stored data
             cursor.execute('''SELECT PRB_map FROM Parameters''')
             row = cursor.fetchone()
-            self.PRB_map = np.frombuffer(row[0], dtype=np.int64).reshape((14, self.PRB_per_channel))
+            self.PRB_map = np.frombuffer(bytearray(row[0]), dtype=np.int64).reshape((14, self.PRB_per_channel))
 
         if parameter == 'resources':
             # Query the database to retrieve stored data

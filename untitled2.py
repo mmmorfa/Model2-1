@@ -2,6 +2,10 @@ import sqlite3
 import json
 import numpy as np
 
+from timeit import default_timer as timer
+
+start = timer()
+
 # Connect to the SQLite database
 conn = sqlite3.connect('shared.db')
 cursor = conn.cursor()
@@ -37,3 +41,7 @@ conn.commit()
 
 # Close connection
 conn.close()
+
+end = timer()
+
+print(end - start)
