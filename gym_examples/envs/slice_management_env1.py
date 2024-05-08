@@ -20,24 +20,44 @@ class SliceManagementEnv1(gym.Env):
 
         self.current_episode = 1
 
-        self.select_db = randint(1,50)
+        self.sample_size = 3
 
-        # RAN Global Parameters -------------------------------------------------------------------------------------------------------------------------------------------------------------
-        self.numerology = 1                       # 0,1,2,3,...
-        self.scs = 2**(self.numerology) * 15_000   # Hz
-        self.slot_per_subframe = 2**(self.numerology)
+        self.buffer_requests = {}
         
-        self.channel_BW = 7_000_000              # Hz (100MHz for <6GHz band, and 400MHZ for mmWave)
-        self.guard_BW = 845_000                   # Hz (for symmetric guard band)
+        #Uncomment to train
+        self.select_db = randint(1,500)
 
-        self.PRB_BW = self.scs * 12               # Hz - Bandwidth for one PRB (one OFDM symbol, 12 subcarriers)
-        self.PRB_per_channel = floor((self.channel_BW - (2*self.guard_BW)) / (self.PRB_BW))        # Number of PRB to allocate within the channel bandwidth
-        self.sprectral_efficiency = 5.1152        # bps/Hz (For 64-QAM and 873/1024)
+        # RAN Global Parameters -------------------------BWP  1------------------------------------------------------------------------------------------------------------------------------------
+        self.numerology1 = 0                       # 0,1,2,3,...
+        self.scs1 = 2**(self.numerology1) * 15_000   # Hz
+        self.slot_per_subframe1 = 2**(self.numerology1)
         
+        self.channel_BW1 = 6_000_000              # Hz (100MHz for <6GHz band, and 400MHZ for mmWave)
+        self.guard_BW1 = 845_000                   # Hz (for symmetric guard band)
+
+        self.PRB_BW1 = self.scs1 * 12               # Hz - Bandwidth for one PRB (one OFDM symbol, 12 subcarriers)
+        self.PRB_per_channel1 = floor((self.channel_BW1 - (2*self.guard_BW1)) / (self.PRB_BW1))        # Number of PRB to allocate within the channel bandwidth
+        self.spectral_efficiency1 = 5.1152        # bps/Hz (For 64-QAM and 873/1024)
+
+        self.PRB_map1 = np.zeros((14, self.PRB_per_channel1))                                 # PRB map per slot (14 OFDM symbols x Number of PRB to allocate within the channel bandwidth)
+
+        # RAN Global Parameters -------------------------BWP  2------------------------------------------------------------------------------------------------------------------------------------
+        self.numerology2 = 1                       # 0,1,2,3,...
+        self.scs2 = 2**(self.numerology2) * 15_000   # Hz
+        self.slot_per_subframe2 = 2**(self.numerology2)
+        
+        self.channel_BW2 = 6_000_000              # Hz (100MHz for <6GHz band, and 400MHZ for mmWave)
+        self.guard_BW2 = 845_000                   # Hz (for symmetric guard band)
+
+        self.PRB_BW2 = self.scs2 * 12               # Hz - Bandwidth for one PRB (one OFDM symbol, 12 subcarriers)
+        self.PRB_per_channel2 = floor((self.channel_BW2 - (2*self.guard_BW2)) / (self.PRB_BW2))        # Number of PRB to allocate within the channel bandwidth
+        self.spectral_efficiency2 = 5.1152        # bps/Hz (For 64-QAM and 873/1024)
+
+        self.PRB_map2 = np.zeros((14, self.PRB_per_channel2))                                 # PRB map per slot (14 OFDM symbols x Number of PRB to allocate within the channel bandwidth)
+
         #Defined parameters per Slice. (Each component is a list of the correspondent slice parameters)-------------------------------------------------------------------------------------
-        #self.slices_param = [10, 20, 50]
-        self.slices_param = {1: [4, 16, 100, 40, 50], 2: [4, 32, 100, 100, 30], 3: [8, 16, 32, 80, 20], 
-                             4: [4, 8, 16, 50, 25], 5: [2, 8, 32, 40, 10], 6: [2, 8, 32, 40, 5]}
+        self.slices_param = {1: [4, 16, 100, 40, 50, 20], 2: [4, 32, 100, 100, 30, 30], 3: [8, 16, 32, 80, 20, 1], 
+                             4: [4, 8, 16, 50, 25, 5], 5: [2, 8, 32, 40, 10, 10], 6: [2, 8, 32, 40, 5, 40]}
 
         #self.slice_requests = pd.read_csv('/home/mario/Documents/DQN_Models/Model 1/gym-examples4/gym_examples/slice_request_db4')  # Load VNF requests from the generated CSV
         #self.slice_requests = pd.read_csv('/data/scripts/DQN_models/Model1/gym_examples/slice_request_db1')    #For pod
@@ -51,6 +71,9 @@ class SliceManagementEnv1(gym.Env):
         
         # Other necessary variables and data structures
         self.current_time_step = 1
+        self.reward_list_log = []
+
+
         self.reward = 0
         self.first = True
 
@@ -65,8 +88,9 @@ class SliceManagementEnv1(gym.Env):
         self.processed_requests = []
         self.read_parameter_db('processed_requests', 0)
 
-        self.PRB_map = np.zeros((14, self.PRB_per_channel))                                 # PRB map per slot (14 OFDM symbols x Number of PRB to allocate within the channel bandwidth)
-        self.read_parameter_db('PRB_map', 0)
+        #self.PRB_map = np.zeros((14, self.PRB_per_channel))                                 # PRB map per slot (14 OFDM symbols x Number of PRB to allocate within the channel bandwidth)
+        self.read_parameter_db('PRB_map1', 0)
+        self.read_parameter_db('PRB_map2', 0)
 
 
         #Available MEC resources (Order: MEC_CPU (Cores), MEC_RAM (GB), MEC_STORAGE (GB), MEC_BW (Mbps))
@@ -91,9 +115,8 @@ class SliceManagementEnv1(gym.Env):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
 
-        self.select_db = randint(1,50)
-        #print(self.select_db)
-        #self.select_db = 41
+        #Uncomment to train
+        #self.select_db = randint(1,500)
         
         #self.current_time_step = 1
 
@@ -136,7 +159,8 @@ class SliceManagementEnv1(gym.Env):
 
         self.simulate_noise()
         self.read_parameter_db('processed_requests', 0)
-        self.read_parameter_db('PRB_map', 0)
+        self.read_parameter_db('PRB_map1', 0)
+        self.read_parameter_db('PRB_map2', 0)
 
         self.check_resources()
     
@@ -147,7 +171,7 @@ class SliceManagementEnv1(gym.Env):
         
         info = {}  # Additional information (if needed)
         
-        #self.current_time_step += 1  # Increment the time step
+        self.current_time_step += 1  # Increment the time step
         
         #print("Action: ", action, "\nObservation: ", self.observation, "\nReward: ", self.reward)
 
@@ -159,18 +183,37 @@ class SliceManagementEnv1(gym.Env):
     def check_maintain(self):
         # Function to check whether a configuration action is needed or not
         self.read_parameter_db('processed_requests', 0)
-        self.read_parameter_db('PRB_map', 0)
+        self.read_parameter_db('PRB_map1', 0)
+        self.read_parameter_db('PRB_map2', 0)
 
         for i in self.processed_requests[:-1]:
-            indices = np.where(self.PRB_map == i['UE_ID'])
-            allocated_symbols = len(indices[0])
 
-            needed_symbols = ceil((i['SLICE_RAN_R_REQUEST'] * (10**6)) / (self.PRB_BW * self.sprectral_efficiency * log2(1 + i['UE_SiNR'])))
+            if i['SLICE_RAN_L_REQUEST'] > 10:
+                indices = np.where(self.PRB_map1 == i['UE_ID'])
+                allocated_symbols = len(indices[0])
+
+                needed_symbols = ceil((i['SLICE_RAN_R_REQUEST'] * (10**6)) / (self.PRB_BW1 * self.spectral_efficiency1 * log2(1 + i['UE_SiNR'])))
+            else:
+                indices = np.where(self.PRB_map2 == i['UE_ID'])
+                allocated_symbols = len(indices[0])
+
+                needed_symbols = ceil((i['SLICE_RAN_R_REQUEST'] * (10**6)) / (self.PRB_BW2 * self.spectral_efficiency2 * log2(1 + i['UE_SiNR'])))
 
             if allocated_symbols < needed_symbols: 
-                self.config_flag = 1
-                self.maintain_request = i['UE_ID']
-                break
+                if self.buffer_requests['{}'.format(i['UE_ID'])] not in self.buffer_requests:
+                    self.buffer_requests['{}'.format(i['UE_ID'])] = [i['SLICE_RAN_R_REQUEST']]
+                else:
+                    self.buffer_requests['{}'.format(i['UE_ID'])].append(i['SLICE_RAN_R_REQUEST'])
+                
+                if len(self.buffer_requests['{}'.format(i['UE_ID'])]) == self.sample_size:
+                    mean_R = np.mean(self.buffer_requests['{}'.format(i['UE_ID'])])
+                    needed_symbols = ceil((mean_R * (10**6)) / (self.PRB_BW2 * self.spectral_efficiency2 * log2(1 + i['UE_SiNR'])))
+                    if allocated_symbols < needed_symbols:
+                        self.config_flag = 1
+                        self.maintain_request = i['UE_ID']
+                        break
+                    else: self.config_flag = 0
+                else: self.config_flag = 0
             else: self.config_flag = 0
 
     def check_resources(self):
@@ -263,7 +306,8 @@ class SliceManagementEnv1(gym.Env):
         self.resources_6['MEC_BW'] = 80
         '''
 
-        self.read_parameter_db('PRB_map', 0)
+        self.read_parameter_db('PRB_map1', 0)
+        self.read_parameter_db('PRB_map2', 0)
 
         #Available MEC resources (Order: MEC_CPU (Cores), MEC_RAM (GB), MEC_STORAGE (GB), MEC_BW (Mbps))
         #self.resources = [1000]
@@ -282,11 +326,13 @@ class SliceManagementEnv1(gym.Env):
                     if d.get('UE_ID') == self.maintain_request:
                         self.allocate_ran(d)
                         break
-                self.update_db('PRB_map', 0)
+                self.update_db('PRB_map1', 0)
+                self.update_db('PRB_map2', 0)
                 self.update_db('processed_requests', 0)
                 self.reward += reward_value   
             else: 
                 terminated = True
+                self.reward_list_log.apend([self.current_time_step, self.reward])
                 self.reward = 0
             
         if action == 2:
@@ -295,6 +341,7 @@ class SliceManagementEnv1(gym.Env):
                 self.reward += reward_value   
             else: 
                 terminated = True
+                self.reward_list_log.apend([self.current_time_step, self.reward])
                 self.reward = 0
 
         if action == 0:
@@ -303,37 +350,63 @@ class SliceManagementEnv1(gym.Env):
                 self.reward += reward_value
             else: 
                 terminated = True
+                self.reward_list_log.apend([self.current_time_step, self.reward])
                 self.reward = 0        
         
         return terminated
 
     def check_RAN(self, request):
-        indices = np.where(self.PRB_map == 0)
-        available_symbols = len(indices[0])
 
-        indices_a = np.where(self.PRB_map == request['UE_ID'])
-        allocated_symbols = len(indices_a[0])
+        if request['SLICE_RAN_L_REQUEST'] > 10:
+            indices = np.where(self.PRB_map1 == 0)
+            available_symbols = len(indices[0])
 
-        W_total = self.PRB_BW * self.sprectral_efficiency * (available_symbols + allocated_symbols)
+            indices_a = np.where(self.PRB_map1 == request['UE_ID'])
+            allocated_symbols = len(indices_a[0])
 
-        if request['SLICE_RAN_R_REQUEST'] * (10**6) <= W_total * log2(1 + request['UE_SiNR']):
-            self.resources_flag = 1
-        else: self.resources_flag = 0
+            W_total = self.PRB_BW1 * self.spectral_efficiency1 * (available_symbols + allocated_symbols)
+
+            if request['SLICE_RAN_R_REQUEST'] * (10**6) <= W_total * log2(1 + request['UE_SiNR']):
+                self.resources_flag = 1
+            else: self.resources_flag = 0
+        else:
+            indices = np.where(self.PRB_map2 == 0)
+            available_symbols = len(indices[0])
+
+            indices_a = np.where(self.PRB_map2 == request['UE_ID'])
+            allocated_symbols = len(indices_a[0])
+
+            W_total = self.PRB_BW2 * self.spectral_efficiency2 * (available_symbols + allocated_symbols)
+
+            if request['SLICE_RAN_R_REQUEST'] * (10**6) <= W_total * log2(1 + request['UE_SiNR']):
+                self.resources_flag = 1
+            else: self.resources_flag = 0
 
     def allocate_ran(self, request):
-        indices = np.where(self.PRB_map == 0)
-        indices_allocated = np.where(self.PRB_map == request['UE_ID'])
 
-        number_symbols = ceil((request['SLICE_RAN_R_REQUEST'] * (10**6)) / (self.PRB_BW * self.sprectral_efficiency * log2(1 + request['UE_SiNR'])))
+        if request['SLICE_RAN_L_REQUEST'] > 10:
+            indices = np.where(self.PRB_map1 == 0)
+            indices_allocated = np.where(self.PRB_map1 == request['UE_ID'])
 
-        for i in range(number_symbols - len(indices_allocated[0])):
-            #print(f"({indices[0][i]}, {indices[1][i]})")
-            self.PRB_map[indices[0][i], indices[1][i]] = request['UE_ID']
+            number_symbols = ceil((request['SLICE_RAN_R_REQUEST'] * (10**6)) / (self.PRB_BW1 * self.spectral_efficiency1 * log2(1 + request['UE_SiNR'])))
+
+            for i in range(number_symbols - len(indices_allocated[0])):
+                #print(f"({indices[0][i]}, {indices[1][i]})")
+                self.PRB_map1[indices[0][i], indices[1][i]] = request['UE_ID']
+        else:
+            indices = np.where(self.PRB_map2 == 0)
+            indices_allocated = np.where(self.PRB_map2 == request['UE_ID'])
+
+            number_symbols = ceil((request['SLICE_RAN_R_REQUEST'] * (10**6)) / (self.PRB_BW2 * self.spectral_efficiency2 * log2(1 + request['UE_SiNR'])))
+
+            for i in range(number_symbols - len(indices_allocated[0])):
+                #print(f"({indices[0][i]}, {indices[1][i]})")
+                self.PRB_map2[indices[0][i], indices[1][i]] = request['UE_ID']
 
     def read_parameter_db(self, parameter, number):
         # Connect to the SQLite database
         conn = sqlite3.connect('data/Global_Parameters{}.db'.format(str(self.select_db)))
-        #conn = sqlite3.connect('data/Global_Parameters30.db')
+        #conn = sqlite3.connect('/home/mario/Documents/DQN_Models/Model 1/gym-examples4/Global_Parameters.db')  
         cursor = conn.cursor()
 
         if parameter == 'processed_requests':
@@ -343,12 +416,19 @@ class SliceManagementEnv1(gym.Env):
             row = cursor.fetchone()
             self.processed_requests = json.loads(row[0])
 
-        if parameter == 'PRB_map':
+        if parameter == 'PRB_map1':
 
             # Query the database to retrieve stored data
-            cursor.execute('''SELECT PRB_map FROM Parameters''')
+            cursor.execute('''SELECT PRB_map1 FROM Parameters''')
             row = cursor.fetchone()
-            self.PRB_map = np.frombuffer(bytearray(row[0]), dtype=np.int64).reshape((14, self.PRB_per_channel))
+            self.PRB_map1 = np.frombuffer(bytearray(row[0]), dtype=np.int64).reshape((14, self.PRB_per_channel1))
+
+        if parameter == 'PRB_map2':
+
+            # Query the database to retrieve stored data
+            cursor.execute('''SELECT PRB_map2 FROM Parameters''')
+            row = cursor.fetchone()
+            self.PRB_map2 = np.frombuffer(bytearray(row[0]), dtype=np.int64).reshape((14, self.PRB_per_channel2))
 
         if parameter == 'resources':
             # Query the database to retrieve stored data
@@ -378,7 +458,7 @@ class SliceManagementEnv1(gym.Env):
     def update_db(self, parameter, number):
         # Connect to the SQLite database
         conn = sqlite3.connect('data/Global_Parameters{}.db'.format(str(self.select_db)))
-        #conn = sqlite3.connect('data/Global_Parameters1.db')
+        #conn = sqlite3.connect('/home/mario/Documents/DQN_Models/Model 1/gym-examples4/Global_Parameters.db')
         cursor = conn.cursor()
 
         if parameter == 'processed_requests':
@@ -388,11 +468,17 @@ class SliceManagementEnv1(gym.Env):
 
             cursor.execute('''UPDATE Parameters SET processed_requests = ? WHERE rowid = 1''', (serialized_parameter,))
 
-        if parameter == 'PRB_map':
+        if parameter == 'PRB_map1':
             # Serialize data
-            serialized_parameter = self.PRB_map.tobytes()
+            serialized_parameter = self.PRB_map1.tobytes()
 
-            cursor.execute('''UPDATE Parameters SET PRB_map = ? WHERE rowid = 1''', (serialized_parameter,)) 
+            cursor.execute('''UPDATE Parameters SET PRB_map1 = ? WHERE rowid = 1''', (serialized_parameter,)) 
+
+        if parameter == 'PRB_map2':
+            # Serialize data
+            serialized_parameter = self.PRB_map2.tobytes()
+
+            cursor.execute('''UPDATE Parameters SET PRB_map2 = ? WHERE rowid = 1''', (serialized_parameter,)) 
 
         if parameter == 'resources':
             match number:
@@ -425,7 +511,7 @@ class SliceManagementEnv1(gym.Env):
         self.read_parameter_db('processed_requests', 0)
 
         index_request = randint(0, (len(self.processed_requests)-2))
-        self.processed_requests[index_request]['UE_SiNR'] = randint(4, 20)
+        self.processed_requests[index_request]['UE_SiNR'] = randint(1, 20)
 
         self.update_db('processed_requests', 0)
 

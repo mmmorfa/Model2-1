@@ -24,7 +24,7 @@ def simulate_noise():
 def read_parameter_db(parameter, number):
         # Connect to the SQLite database
         #conn = sqlite3.connect('data/Global_Parameters{}.db'.format(str(self.select_db)))
-        conn = sqlite3.connect('data/Global_Parameters42.db')
+        conn = sqlite3.connect('data/Global_Parameters401.db')
         cursor = conn.cursor()
 
         if parameter == 'processed_requests':
@@ -39,7 +39,7 @@ def read_parameter_db(parameter, number):
             # Query the database to retrieve stored data
             cursor.execute('''SELECT PRB_map FROM Parameters''')
             row = cursor.fetchone()
-            return np.frombuffer(bytearray(row[0]), dtype=np.int64).reshape((14, 14))
+            return np.frombuffer(bytearray(row[0]), dtype=np.int64).reshape((14, 11))
 
         # Commit changes and close connection
         conn.commit()
